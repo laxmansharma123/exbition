@@ -1,0 +1,493 @@
+
+/* =========================================
+   BANSSA WIRE - COMPACT DASHBOARD V2
+   ========================================= */
+
+:root {
+  --navy: #0b2343;
+  --gold: #ffc32b;
+  --surface: #f5f7fb;
+}
+
+/* Full width layout - remove unwanted gaps */
+
+#root {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.app-layout {
+  width: 100%;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+.sidebar {
+  width: 250px;
+}
+
+.main-area {
+  margin-left: 250px;
+  width: calc(100% - 250px);
+  min-width: 0;
+  flex: 1;
+}
+
+/* Compact professional header */
+
+.top-header {
+  width: 100%;
+  height: 78px;
+  padding: 0 24px;
+}
+
+.header-left h1 {
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.header-left p {
+  font-size: 12px;
+}
+
+.header-page-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.profile-details strong {
+  font-size: 13px;
+}
+
+.profile-details span {
+  font-size: 11px;
+}
+
+/* Main dashboard */
+
+.dashboard-content {
+  width: 100%;
+  max-width: none;
+  padding: 20px 22px;
+  margin: 0;
+}
+
+/* Four compact KPI cards */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.stat-card {
+  min-height: 115px;
+  padding: 16px 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+}
+
+.stat-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.stat-info {
+  padding: 0;
+}
+
+.stat-label {
+  font-size: 11.5px;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.stat-change {
+  font-size: 10px;
+}
+
+/* FORCE 3 COLUMNS ON DESKTOP */
+
+.analytics-grid {
+  display: grid !important;
+  grid-template-columns:
+    minmax(0, 1.8fr)
+    minmax(0, 1fr)
+    minmax(0, 1.1fr) !important;
+  gap: 14px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+
+/* Scanner must occupy ONLY first column */
+
+.analytics-grid > .scanner-banner {
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+.analytics-grid > .source-panel,
+.analytics-grid > .trend-panel {
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+/* Scanner card */
+
+.scanner-banner {
+  min-width: 0;
+  min-height: 290px;
+  height: 290px;
+  border-radius: 13px;
+  background:
+    linear-gradient(115deg, #071c36, #163657);
+  overflow: hidden;
+}
+
+.scanner-content {
+  margin-left: 29%;
+  padding: 22px 15px 15px 0;
+}
+
+.scanner-content h2 {
+  color: #ffffff !important;
+  font-size: 21px !important;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 8px;
+  text-align: left;
+}
+
+.scanner-content p {
+  color: #e5edf8;
+  font-size: 11px;
+  line-height: 1.55;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.scanner-eyebrow {
+  font-size: 9px;
+  margin-bottom: 9px;
+  letter-spacing: .8px;
+}
+
+/* Wire image - use your own wire product photo */
+
+.wire-art {
+  left: -15px;
+  bottom: 0;
+  width: 46%;
+  height: 85%;
+  background-image: url('/wire-coil.jpg');
+  background-size: cover;
+  background-position: center;
+  filter: grayscale(1) contrast(1.1);
+  opacity: .9;
+  mask-image: linear-gradient(
+    90deg,
+    black 30%,
+    transparent 100%
+  );
+}
+
+/* Smaller yellow decorative elements */
+
+.scanner-banner::before {
+  width: 175px;
+  height: 175px;
+  border-width: 35px;
+  left: -100px;
+  top: -105px;
+}
+
+.scanner-banner::after {
+  width: 125px;
+  height: 125px;
+  right: -85px;
+  bottom: -75px;
+}
+
+/* Compact upload section */
+
+.upload-zone {
+  min-height: 139px;
+  padding: 10px;
+  gap: 5px;
+  border-radius: 9px;
+}
+
+.upload-zone > svg {
+  width: 24px;
+  height: 24px;
+}
+
+.upload-zone strong {
+  font-size: 11px;
+}
+
+.upload-zone span {
+  font-size: 10px;
+}
+
+.upload-button {
+  padding: 9px 15px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+
+/* Analytics cards */
+
+.source-panel,
+.trend-panel {
+  min-width: 0;
+  min-height: 290px;
+  height: 290px;
+  padding: 17px 14px;
+}
+
+.panel h3 {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.source-body {
+  height: 218px;
+  gap: 5px;
+}
+
+.donut-wrapper {
+  width: 51%;
+  height: 170px;
+}
+
+.donut-center strong {
+  font-size: 21px;
+}
+
+.donut-center span {
+  font-size: 10px;
+}
+
+.source-legend {
+  gap: 13px;
+}
+
+.legend-row {
+  font-size: 10px;
+  gap: 5px;
+}
+
+.legend-row strong {
+  font-size: 10px;
+}
+
+.legend-row i {
+  width: 9px;
+  height: 9px;
+}
+
+.period-select {
+  font-size: 10px;
+  padding: 7px;
+}
+
+.trend-chart {
+  height: 220px;
+  margin-top: 12px;
+}
+
+/* Recent Leads - full width below charts */
+
+.recent-panel {
+  width: 100%;
+  border-radius: 13px;
+}
+
+.recent-header {
+  padding: 15px 18px;
+}
+
+.recent-title {
+  gap: 10px;
+}
+
+.recent-title h3 {
+  font-size: 16px;
+}
+
+.view-all {
+  font-size: 11px;
+}
+
+.leads-table {
+  width: 100%;
+  font-size: 11px;
+}
+
+.leads-table th {
+  padding: 12px 11px;
+  font-size: 11px;
+}
+
+.leads-table td {
+  padding: 11px;
+  font-size: 10.5px;
+}
+
+.source-tag {
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+/* Sidebar refinement */
+
+.nav-link {
+  height: 47px;
+  font-size: 13px;
+}
+
+.nav-link svg {
+  width: 19px;
+  height: 19px;
+}
+
+.brand-text {
+  font-size: 16px;
+}
+
+/* Laptop */
+
+@media (min-width: 769px) and (max-width: 1250px) {
+  .sidebar {
+    width: 215px;
+  }
+
+  .main-area {
+    margin-left: 215px;
+    width: calc(100% - 215px);
+  }
+
+  .dashboard-content {
+    padding: 17px;
+  }
+
+  .stats-grid,
+  .analytics-grid {
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px 9px;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    width: 39px;
+    height: 39px;
+  }
+
+  .stat-value {
+    font-size: 23px;
+  }
+
+  .scanner-content {
+    margin-left: 22%;
+  }
+
+  .scanner-content h2 {
+    font-size: 18px !important;
+  }
+
+  .source-panel,
+  .trend-panel {
+    padding: 13px 9px;
+  }
+
+  .legend-row {
+    font-size: 9px;
+  }
+}
+
+/* Mobile responsive */
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 260px;
+  }
+
+  .main-area {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .top-header {
+    height: 68px;
+    padding: 0 14px;
+  }
+
+  .dashboard-content {
+    padding: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .analytics-grid > .scanner-banner {
+    grid-column: 1 !important;
+  }
+
+  .scanner-banner {
+    height: auto;
+    min-height: 285px;
+  }
+
+  .scanner-content {
+    margin-left: 23%;
+    padding: 20px 15px;
+  }
+
+  .source-panel,
+  .trend-panel {
+    height: 290px;
+  }
+
+  .source-body {
+    justify-content: center;
+  }
+
+  .donut-wrapper {
+    width: 50%;
+  }
+
+  .leads-table {
+    min-width: 850px;
+  }
+
+  .scan-layout {
+    grid-template-columns: 1fr;
+  }
+}
