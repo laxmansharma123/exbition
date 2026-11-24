@@ -1,3 +1,4 @@
+
 # Logs
 logs
 *.log
@@ -7,10 +8,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies and build
 node_modules
 dist
 dist-ssr
 *.local
+
+# API Keys and Environment Variables
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# Backup Files
+src/App.backup.jsx
 
 # Editor directories and files
 .vscode/*

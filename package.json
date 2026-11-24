@@ -10,13 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.2",
     "@tailwindcss/vite": "^4.3.5",
     "axios": "^1.21.1",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
     "lucide-react": "^1.74.0",
+    "multer": "^2.5.0",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "recharts": "^3.10.1",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.5",
     "tesseract.js": "^7.0.0"
   },

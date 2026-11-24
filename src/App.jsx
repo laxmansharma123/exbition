@@ -1,6 +1,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { scanCard } from "./cardScanner";
+import { scanInquiryAI } from "./inquiryScanner";
+
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   LayoutDashboard, Camera, Users, ChartNoAxesColumnIncreasing,
@@ -26,6 +28,7 @@ const menu = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "Scan Card", icon: Camera },
   { name: "Bulk Cards", icon: Layers },
+  { name: "Inquiries", icon: FileText },
   { name: "Leads", icon: Users },
   { name: "Analytics", icon: ChartNoAxesColumnIncreasing },
   { name: "Export", icon: Download },
@@ -47,8 +50,34 @@ function CardThumbnail({ file, index }) {
   return src ? <img src={src} alt={`Card ${index + 1}`} className="h-24 w-full rounded object-contain bg-slate-50" /> : null;
 }
 
+function CardThumbnailLarge({ file }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return src ? <img src={src} alt="Inquiry form preview" className="max-h-[750px] w-full rounded-lg object-contain" /> : null;
+}
+
 function App() {
   const [page, setPage] = useState("Dashboard");
+  const [inquiryQueue, setInquiryQueue] = useState([]);
+  const inquiryQueueRef = useRef([]);
+  const [inquiryIndex, setInquiryIndex] = useState(0);
+  const inquiryIndexRef = useRef(0);
+  const inquiryDraftsRef = useRef({});
+  const [inquiryForm, setInquiryForm] = useState({});
+  const [inquiryRaw, setInquiryRaw] = useState("");
+  const [inquiryReview, setInquiryReview] = useState([]);
+  const [inquiryBusy, setInquiryBusy] = useState(false);
+  const [inquiryMessage, setInquiryMessage] = useState("");
+  const [inquiryProgress, setInquiryProgress] = useState("");
+  const inquiryImageInputRef = useRef(null);
+  const inquiryPdfInputRef = useRef(null);
+  const inquiryScanToken = useRef(0);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -82,6 +111,243 @@ function App() {
   useEffect(() => {
     localStorage.setItem("banssa_crm_leads", JSON.stringify(leads));
   }, [leads]);
+
+  const INQUIRY_FIELDS = [
+    ["name", "Contact Person"], ["company", "Company Name"],
+    ["mobile", "Phone No."], ["email", "E-mail"],
+    ["designation", "Designation"], ["address", "Address"],
+    ["product", "Product"], ["annualQuantity", "Annual Quantity"],
+    ["endUse", "End Use"], ["presentSource", "Present Source"],
+    ["diameter", "Diameter"], ["tensileRange", "Tensile Range"],
+    ["surface", "Surface"], ["packaging", "Packaging"],
+    ["notes", "Additional Notes"]
+  ];
+  const EMPTY_INQUIRY = Object.fromEntries(INQUIRY_FIELDS.map(([key]) => [key, ""]));
+
+  // Printed visiting-card OCR is used for identity fields. Handwritten cells
+  // are kept blank when confidence is insufficient rather than fabricated.
+  const parseInquiryText = (text, cardFields = {}) => {
+    const lines = text.split(/\r?\n/).map(v => v.trim()).filter(Boolean);
+    const readLabel = (pattern) => {
+      const i = lines.findIndex(v => pattern.test(v));
+      if (i < 0) return "";
+      const value = lines[i].replace(/^.*?\s*:\s*/, "").trim();
+      return value !== lines[i] && value.length > 1 ? value : "";
+    };
+    return {
+      ...EMPTY_INQUIRY,
+      ...Object.fromEntries(Object.keys(EMPTY_INQUIRY).filter(k => k in cardFields).map(k => [k, cardFields[k] || ""])),
+      product: readLabel(/^\s*PRODUCT\s*:/i),
+      annualQuantity: readLabel(/^\s*ANNUAL\s+QUANTITY\s*:/i),
+      endUse: readLabel(/^\s*END\s+USE\s*:/i),
+      presentSource: readLabel(/^\s*PRESENT\s+SOURCE\s*:/i),
+      diameter: readLabel(/^\s*DIAMETER\s*:/i),
+      tensileRange: readLabel(/^\s*TENSILE\s+RANGE\s*:/i),
+      surface: readLabel(/^\s*SURFACE\s*:/i),
+      packaging: readLabel(/^\s*PACKAGING\s*:/i),
+    };
+  };
+
+  const scanInquiryAt = async (index, force = false) => {
+    const file = inquiryQueueRef.current[index];
+    if (!file) return;
+    const token = ++inquiryScanToken.current;
+    inquiryIndexRef.current = index;
+    setInquiryIndex(index);
+    const previous = inquiryDraftsRef.current[index];
+    if (previous && !force) {
+      setInquiryForm({ ...EMPTY_INQUIRY, ...previous.fields });
+      setInquiryRaw(previous.text || "");
+      setInquiryReview(previous.review || []);
+      setInquiryMessage("Review details and handwritten fields before saving.");
+      return;
+    }
+    setInquiryBusy(true);
+    setInquiryProgress(`Scanning inquiry ${index + 1}...`);
+    try {
+      const result = await scanInquiryAI(file, progress => {
+        if (token === inquiryScanToken.current) {
+            setInquiryProgress(progress);
+        }
+    });
+      if (token !== inquiryScanToken.current) return;
+      const scannedFields = { ...EMPTY_INQUIRY, ...(result.fields || {}) };
+      // During a forced rescan, keep manually entered values if OCR misses them.
+      const fields = force && previous
+        ? Object.fromEntries(Object.keys(EMPTY_INQUIRY).map(key => [
+            key, String(previous.fields?.[key] || "").trim() || scannedFields[key] || ""
+          ]))
+        : scannedFields;
+      const review = (result.needsReview || []).filter(key => !fields[key]);
+      inquiryDraftsRef.current[index] = { fields, text: result.rawText || "", review };
+      setInquiryForm(fields);
+      setInquiryRaw(result.rawText || "");
+      setInquiryReview(review);
+      setInquiryMessage(review.length
+        ? `OCR scan complete. Please verify: ${review.join(", ")}.`
+        : "OCR scan complete. Review details before saving.");
+    } catch (error) {
+      if (token !== inquiryScanToken.current) return;
+      // Keep existing data on OCR failure; do not cache an empty failed scan.
+      if (previous) {
+        setInquiryForm({ ...EMPTY_INQUIRY, ...previous.fields });
+        setInquiryRaw(previous.text || "");
+        setInquiryReview(previous.review || []);
+      } else {
+        setInquiryForm({ ...EMPTY_INQUIRY });
+        setInquiryRaw("");
+        setInquiryReview([]);
+      }
+      setInquiryMessage(`OCR failed: ${error.message}. Enter details manually.`);
+    } finally {
+      if (token === inquiryScanToken.current) {
+        setInquiryBusy(false);
+        setInquiryProgress("");
+      }
+    }
+  };
+
+  const addInquiryFiles = async (fileList, isPdf = false) => {
+    const files = Array.from(fileList || []);
+    if (!files.length || inquiryBusy) return;
+    setInquiryBusy(true);
+    try {
+      const added = [];
+      for (const file of files) {
+        if (isPdf) {
+          if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") continue;
+          setInquiryProgress(`Rendering ${file.name}...`);
+          added.push(...await pdfToCards(file));
+        } else if (file.type.startsWith("image/") && file.size <= 10 * 1024 * 1024) {
+          added.push(file);
+        }
+      }
+      if (!added.length) throw new Error("No valid images or PDF pages found.");
+      const oldLength = inquiryQueueRef.current.length;
+      inquiryQueueRef.current = [...inquiryQueueRef.current, ...added];
+      setInquiryQueue([...inquiryQueueRef.current]);
+      setInquiryMessage(`${added.length} inquiry previews added. You can add more before saving.`);
+      if (!oldLength) {
+        // Avoid simultaneous OCR while importing.
+        setInquiryBusy(false);
+        await scanInquiryAt(0);
+      }
+    } catch (error) {
+      setInquiryMessage(`Import failed: ${error.message}`);
+    } finally {
+      setInquiryBusy(false);
+      setInquiryProgress("");
+    }
+  };
+
+  const updateInquiryField = (key, value) => {
+    const next = { ...inquiryForm, [key]: value };
+    const updatedReview = inquiryReview.filter(field => field !== key);
+    setInquiryReview(updatedReview);
+    setInquiryForm(next);
+    const index = inquiryIndexRef.current;
+    inquiryDraftsRef.current[index] = {
+      ...(inquiryDraftsRef.current[index] || {}),
+      fields: next,
+      review: updatedReview,
+    };
+  };
+
+  const removeInquiryAt = async (index) => {
+    const old = inquiryQueueRef.current;
+    const remaining = old.filter((_, i) => i !== index);
+    const drafts = {};
+    old.forEach((_, i) => {
+      if (i !== index && inquiryDraftsRef.current[i])
+        drafts[i > index ? i - 1 : i] = inquiryDraftsRef.current[i];
+    });
+    inquiryDraftsRef.current = drafts;
+    inquiryQueueRef.current = remaining;
+    setInquiryQueue([...remaining]);
+    if (remaining.length) {
+      await scanInquiryAt(Math.min(index, remaining.length - 1));
+    } else {
+      ++inquiryScanToken.current;
+      inquiryIndexRef.current = 0;
+      setInquiryIndex(0);
+      setInquiryForm({ ...EMPTY_INQUIRY });
+      setInquiryRaw("");
+      setInquiryReview([]);
+      setInquiryReview([]);
+    }
+  };
+
+  const submitInquiryData = async fields => {
+    if (!String(fields.name || "").trim() && !String(fields.company || "").trim()) {
+      throw new Error("Contact Person or Company Name is required.");
+    }
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ ...fields, recordType: "inquiry", source: "Exhibition Inquiry" }),
+    });
+    setLeads(prev => [{ ...fields, source: "Exhibition Inquiry", id: Date.now() + Math.random(), syncStatus: "Unverified" }, ...prev]);
+  };
+
+  const saveInquiryAndNext = async e => {
+    e.preventDefault();
+    if (inquiryBusy || !inquiryQueueRef.current.length) return;
+    const currentReview = inquiryDraftsRef.current[inquiryIndexRef.current]?.review || [];
+    if (currentReview.length && !window.confirm(`OCR could not confidently read: ${currentReview.join(", ")}. Have you checked and corrected these fields?`)) return;
+    setInquiryBusy(true);
+    try {
+      await submitInquiryData(inquiryForm);
+      setInquiryMessage("Inquiry request dispatched. Check Google Sheet; server confirmation unavailable.");
+      await removeInquiryAt(inquiryIndexRef.current);
+    } catch (error) {
+      setInquiryMessage(`Not submitted: ${error.message}`);
+    } finally { setInquiryBusy(false); }
+  };
+
+  const submitAllInquiries = async () => {
+    if (inquiryBusy || !inquiryQueueRef.current.length) return;
+    setInquiryBusy(true);
+    const removed = [];
+    let skipped = 0;
+    try {
+      for (let i = 0; i < inquiryQueueRef.current.length; i++) {
+        setInquiryProgress(`Reviewing inquiry ${i + 1}/${inquiryQueueRef.current.length}...`);
+        let draft = inquiryDraftsRef.current[i];
+        if (!draft) {
+          try {
+            const result = await scanInquiryAI(inquiryQueueRef.current[i]);
+            draft = { fields: { ...EMPTY_INQUIRY, ...(result.fields || {}) }, text: result.rawText || "", review: result.needsReview || [] };
+            inquiryDraftsRef.current[i] = draft;
+          } catch { skipped++; continue; }
+        }
+        if (!draft.fields.name && !draft.fields.company) { skipped++; continue; }
+        if (draft.review?.length) { skipped++; continue; }
+        try { await submitInquiryData(draft.fields); removed.push(i); }
+        catch { skipped++; }
+      }
+      const old = inquiryQueueRef.current;
+      const kept = old.map((file, i) => ({ file, i })).filter(x => !removed.includes(x.i));
+      const drafts = {};
+      kept.forEach((x, i) => { if (inquiryDraftsRef.current[x.i]) drafts[i] = inquiryDraftsRef.current[x.i]; });
+      inquiryDraftsRef.current = drafts;
+      inquiryQueueRef.current = kept.map(x => x.file);
+      setInquiryQueue([...inquiryQueueRef.current]);
+      if (kept.length) {
+        inquiryIndexRef.current = 0;
+        setInquiryIndex(0);
+        setInquiryForm({ ...EMPTY_INQUIRY, ...(drafts[0]?.fields || {}) });
+        setInquiryRaw(drafts[0]?.text || "");
+        setInquiryReview(drafts[0]?.review || []);
+      } else {
+        inquiryIndexRef.current = 0;
+        setInquiryIndex(0);
+        setInquiryForm({ ...EMPTY_INQUIRY });
+        setInquiryRaw("");
+        setInquiryReview([]);
+      }
+      setInquiryMessage(`${removed.length} requests dispatched (unverified). ${skipped} need review. Check Google Sheet before retrying.`);
+    } finally { setInquiryBusy(false); setInquiryProgress(""); }
+  };
 
   const navigate = (name) => {
     setPage(name);
@@ -473,7 +739,7 @@ function App() {
 
       <div className="relative z-10 ml-[29%] flex min-w-0 flex-1 flex-col justify-center px-4 py-4">
         <div className="mb-2 text-[9px] font-extrabold tracking-[1.3px] text-amber-400">
-          ✦ SMART LEAD CAPTURE
+          âœ¦ SMART LEAD CAPTURE
         </div>
         <h2 className="mb-2 text-[clamp(15px,1.5vw,23px)] font-extrabold leading-tight text-white">
           Scan Visiting Card
@@ -593,11 +859,11 @@ function App() {
           {data.length ? data.map((l, i) => (
             <tr key={l.id} className="border-b border-slate-100 hover:bg-slate-50">
               <td className="px-3 py-3">{i + 1}</td>
-              <td className="px-3 py-3 font-bold">{l.name || "—"}</td>
-              <td className="px-3 py-3">{l.company || "—"}</td>
-              <td className="px-3 py-3">{l.mobile || "—"}</td>
-              <td className="px-3 py-3">{l.email || "—"}</td>
-              <td className="px-3 py-3">{l.designation || "—"}</td>
+              <td className="px-3 py-3 font-bold">{l.name || "â€”"}</td>
+              <td className="px-3 py-3">{l.company || "â€”"}</td>
+              <td className="px-3 py-3">{l.mobile || "â€”"}</td>
+              <td className="px-3 py-3">{l.email || "â€”"}</td>
+              <td className="px-3 py-3">{l.designation || "â€”"}</td>
               <td className="px-3 py-3">
                 <span className={`rounded-md px-2 py-1 font-semibold ${
                   l.source === "Website" ? "bg-amber-100 text-amber-700" :
@@ -696,7 +962,7 @@ function App() {
             <Factory size={25} className="text-amber-400" />
             <div>
               <p className="text-[12px] font-bold">Exhibition Mode</p>
-              <p className="mt-1 text-[11px] text-emerald-400">● Active</p>
+              <p className="mt-1 text-[11px] text-emerald-400">â— Active</p>
             </div>
           </div>
           <div className="absolute -bottom-24 -left-12 h-36 w-80 rotate-[-14deg] rounded-[50%] bg-amber-400" />
@@ -847,7 +1113,7 @@ function App() {
                       </div>
                       {(importing || bulkSaving) && <p className="text-xs font-semibold text-amber-700">{importProgress || "Processing..."}</p>}
                       {!!bulkQueue.length && <>
-                        <p className="text-xs font-bold">Card {bulkIndex + 1} of {bulkQueue.length} • Pending cards only</p>
+                        <p className="text-xs font-bold">Card {bulkIndex + 1} of {bulkQueue.length} â€¢ Pending cards only</p>
                         <div className="flex flex-wrap gap-2">
                           <button type="button" disabled={bulkIndex === 0 || scanning || saving || importing || bulkSaving} onClick={() => goToBulkCard(bulkIndex - 1)} className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40"><ArrowLeft size={14} className="inline" /> Previous</button>
                           <button type="button" disabled={bulkIndex >= bulkQueue.length - 1 || scanning || saving || importing || bulkSaving} onClick={() => goToBulkCard(bulkIndex + 1)} className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40">Next <SkipForward size={14} className="inline" /></button>
@@ -934,6 +1200,62 @@ function App() {
                   <button type="submit" disabled={scanning || saving || bulkSaving || importing || (page === "Bulk Cards" && (!bulkQueue.length || bulkStatuses[bulkIndex] === "submitted"))} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 py-3 text-sm font-bold hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50">
                     <Plus size={17} /> {scanning ? `Scanning... ${scanProgress}%` : saving ? "Submitting..." : page === "Bulk Cards" ? (bulkStatuses[bulkIndex] === "submitted" ? "Already Submitted" : "Submit Lead & Next Card") : "Save Lead"}
                   </button>
+                </form>
+              </div>
+            </>
+          )}
+
+          {page === "Inquiries" && (
+            <>
+              <div className="mb-5">
+                <h2 className="text-xl font-extrabold">Exhibition Inquiry Forms</h2>
+                <p className="mt-1 text-xs text-slate-500">Upload inquiry forms individually, in bulk, or as PDF pages. Review handwritten details before submission.</p>
+              </div>
+              <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-3">
+                    <h3 className="text-sm font-bold">Inquiry Preview Queue</h3>
+                    <p className="text-xs text-slate-500">Add files without saving first. Previous / Next preserves edits. Submitted previews disappear.</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={inquiryBusy} onClick={() => inquiryImageInputRef.current?.click()} className="rounded-lg bg-amber-400 px-4 py-3 text-xs font-bold disabled:opacity-50">Add Inquiry Images</button>
+                      <button type="button" disabled={inquiryBusy} onClick={() => inquiryPdfInputRef.current?.click()} className="rounded-lg border px-4 py-3 text-xs font-bold disabled:opacity-50">Add Inquiry PDF</button>
+                      <button type="button" disabled={inquiryBusy || !inquiryQueue.length} onClick={submitAllInquiries} className="rounded-lg bg-[#0c2343] px-4 py-3 text-xs font-bold text-white disabled:opacity-50">Submit All Reviewed</button>
+                      <button type="button" disabled={inquiryBusy || !inquiryQueue.length} onClick={() => scanInquiryAt(inquiryIndex, true)} className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800 disabled:opacity-50">Rescan Current Inquiry</button>
+                    </div>
+                    <input ref={inquiryImageInputRef} className="hidden" type="file" accept="image/*" multiple onChange={e => { addInquiryFiles(e.target.files); e.target.value = ""; }} />
+                    <input ref={inquiryPdfInputRef} className="hidden" type="file" accept="application/pdf,.pdf" multiple onChange={e => { addInquiryFiles(e.target.files, true); e.target.value = ""; }} />
+                    {inquiryProgress && <p className="text-xs font-bold text-amber-700">{inquiryProgress}</p>}
+                    {!!inquiryQueue.length && <>
+                      <p className="text-xs font-bold">Inquiry {inquiryIndex + 1} of {inquiryQueue.length} - Pending only</p>
+                      <div className="flex gap-2">
+                        <button type="button" className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40" disabled={inquiryBusy || inquiryIndex === 0} onClick={() => scanInquiryAt(inquiryIndex - 1)}>Previous</button>
+                        <button type="button" className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40" disabled={inquiryBusy || inquiryIndex >= inquiryQueue.length - 1} onClick={() => scanInquiryAt(inquiryIndex + 1)}>Next</button>
+                      </div>
+                      <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                        {inquiryQueue.map((file, i) => <div key={file.name + i} className={`relative rounded-lg border-2 p-1 ${i === inquiryIndex ? "border-amber-400" : "border-slate-200"}`}>
+                          <button type="button" disabled={inquiryBusy} onClick={() => scanInquiryAt(i)} className="w-full text-left"><CardThumbnail file={file} index={i} /><span className="block truncate text-[10px]">{i + 1}. {file.name}</span></button>
+                          <button type="button" disabled={inquiryBusy} onClick={() => removeInquiryAt(i)} title="Remove" className="absolute right-1 top-1 rounded bg-white p-1 text-red-600"><Trash2 size={13}/></button>
+                        </div>)}
+                      </div>
+                    </>}
+                  </div>
+                  {!!inquiryQueue.length && <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 className="mb-3 text-sm font-bold">Full Inquiry Form Preview</h3>
+                    <CardThumbnailLarge file={inquiryQueue[inquiryIndex]} />
+                    {inquiryRaw && <details className="mt-3 text-xs"><summary className="cursor-pointer font-semibold">View OCR text</summary><pre className="mt-2 whitespace-pre-wrap break-words">{inquiryRaw}</pre></details>}
+                  </div>}
+                </div>
+                <form onSubmit={saveInquiryAndNext} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-extrabold">Inquiry Information</h3>
+                  <p className="mb-4 mt-2 text-xs text-slate-500">Automatically reads visiting cards and handwritten inquiry details directly in your browser. Review before submitting.</p>
+                  {inquiryMessage && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">{inquiryMessage}</p>}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {INQUIRY_FIELDS.map(([key, label]) => <label key={key} className={key === "notes" ? "sm:col-span-2" : ""}>
+                      <span className="mb-2 block text-xs font-semibold">{label}</span>
+                      {key === "notes" ? <textarea rows={3} value={inquiryForm[key] || ""} onChange={e => updateInquiryField(key, e.target.value)} className="w-full rounded-lg border border-slate-200 p-3 text-xs focus:border-amber-400" /> : <input value={inquiryForm[key] || ""} onChange={e => updateInquiryField(key, e.target.value)} type={key === "email" ? "email" : "text"} placeholder={label} className="w-full rounded-lg border border-slate-200 px-3 py-3 text-xs outline-none focus:border-amber-400" />}
+                    </label>)}
+                  </div>
+                  <button type="submit" disabled={inquiryBusy || !inquiryQueue.length} className="mt-5 flex w-full justify-center rounded-lg bg-amber-400 py-3 text-sm font-bold disabled:opacity-50">{inquiryBusy ? "Processing..." : "Submit Inquiry & Next"}</button>
                 </form>
               </div>
             </>
