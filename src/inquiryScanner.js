@@ -1,7 +1,7 @@
 
 // ==================================================
 // BANSSA WIRE INDUSTRIES
-// OPENROUTER AI INQUIRY SCANNER
+// LOCAL + VERCEL CLOUD AI INQUIRY SCANNER
 // ==================================================
 
 const FIELD_KEYS = [
@@ -22,14 +22,16 @@ const FIELD_KEYS = [
   "notes"
 ];
 
-const MAX_FILE_SIZE = 12 * 1024 * 1024;
-
 const API_ENDPOINT = "/api/scan-inquiry";
+
+const MAX_UPLOAD_SIZE = 3.5 * 1024 * 1024;
+
+const MAX_INPUT_SIZE = 30 * 1024 * 1024;
 
 let scanQueue = Promise.resolve();
 
 // ==================================================
-// VALIDATE UPLOADED IMAGE
+// IMAGE VALIDATION
 // ==================================================
 
 function validateImage(file) {
@@ -51,11 +53,182 @@ function validateImage(file) {
     );
   }
 
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_INPUT_SIZE) {
     throw new Error(
-      "Maximum image size is 12 MB."
+      "Maximum original image size is 30 MB."
     );
   }
+}
+
+// ==================================================
+// LOAD IMAGE
+// ==================================================
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+
+      reject(
+        new Error("Unable to read inquiry image.")
+      );
+    };
+
+    image.src = url;
+  });
+}
+
+// ==================================================
+// CONVERT CANVAS TO JPEG
+// ==================================================
+
+function canvasToBlob(canvas, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      blob => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(
+            new Error("Image compression failed.")
+          );
+        }
+      },
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
+// ==================================================
+// SMART IMAGE COMPRESSION
+// ==================================================
+
+async function compressImage(file) {
+  // Preserve original image when already small enough.
+
+  if (file.size <= MAX_UPLOAD_SIZE) {
+    return file;
+  }
+
+  const image = await loadImage(file);
+
+  const canvas = document.createElement("canvas");
+
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    throw new Error(
+      "Image processing is not supported."
+    );
+  }
+
+  const originalWidth = image.naturalWidth;
+  const originalHeight = image.naturalHeight;
+
+  const maxDimension = 2400;
+
+  const initialScale = Math.min(
+    1,
+    maxDimension /
+      Math.max(originalWidth, originalHeight)
+  );
+
+  let width = Math.max(
+    1,
+    Math.round(originalWidth * initialScale)
+  );
+
+  let height = Math.max(
+    1,
+    Math.round(originalHeight * initialScale)
+  );
+
+  let quality = 0.94;
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.fillStyle = "#ffffff";
+
+    ctx.fillRect(
+      0,
+      0,
+      width,
+      height
+    );
+
+    ctx.imageSmoothingEnabled = true;
+
+    ctx.imageSmoothingQuality = "high";
+
+    ctx.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height
+    );
+
+    const blob = await canvasToBlob(
+      canvas,
+      quality
+    );
+
+    if (blob.size <= MAX_UPLOAD_SIZE) {
+      console.log(
+        "ORIGINAL IMAGE:",
+        (file.size / 1024 / 1024).toFixed(2),
+        "MB"
+      );
+
+      console.log(
+        "COMPRESSED IMAGE:",
+        (blob.size / 1024 / 1024).toFixed(2),
+        "MB"
+      );
+
+      return new File(
+        [blob],
+        file.name.replace(/\.[^.]+$/, "") +
+          "-compressed.jpg",
+        {
+          type: "image/jpeg",
+          lastModified: Date.now()
+        }
+      );
+    }
+
+    if (quality > 0.75) {
+      quality -= 0.07;
+    } else {
+      width = Math.max(
+        1,
+        Math.round(width * 0.85)
+      );
+
+      height = Math.max(
+        1,
+        Math.round(height * 0.85)
+      );
+
+      quality = 0.90;
+    }
+  }
+
+  throw new Error(
+    "Image is too large. Please upload a smaller image."
+  );
 }
 
 // ==================================================
@@ -101,15 +274,23 @@ async function performScan(file, onProgress) {
     }
   };
 
+  report("Preparing inquiry image...");
+
+  const processedFile = await compressImage(file);
+
   const formData = new FormData();
 
-  formData.append("image", file);
+  formData.append(
+    "image",
+    processedFile
+  );
 
   const controller = new AbortController();
 
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, 135000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    135000
+  );
 
   try {
     console.log("============================");
@@ -118,13 +299,9 @@ async function performScan(file, onProgress) {
       "BANSSA OPENROUTER AI SCAN STARTED"
     );
 
-    report("Preparing inquiry image...");
-
     report(
       "AI is reading visiting card and handwritten requirements..."
     );
-
-    // Send image to secure local AI server.
 
     const response = await fetch(
       API_ENDPOINT,
@@ -137,13 +314,19 @@ async function performScan(file, onProgress) {
 
     const data = await response
       .json()
-      .catch(() => {
-        throw new Error(
-          "Invalid server response. Make sure server.mjs is running."
-        );
-      });
+      .catch(() => null);
 
-    // Handle API errors.
+    if (response.status === 413) {
+      throw new Error(
+        "Image is too large. Please upload a smaller image."
+      );
+    }
+
+    if (!data) {
+      throw new Error(
+        "Invalid AI server response."
+      );
+    }
 
     if (
       !response.ok ||
@@ -169,8 +352,6 @@ async function performScan(file, onProgress) {
       "Processing extracted customer details..."
     );
 
-    // Map extracted details to existing CRM fields.
-
     const fields = normalizeFields(
       data.fields
     );
@@ -185,9 +366,7 @@ async function performScan(file, onProgress) {
       ? data.needsReview.filter(
           key => FIELD_KEYS.includes(key)
         )
-      : FIELD_KEYS.filter(
-          key => key !== "notes"
-        );
+      : [...FIELD_KEYS];
 
     const rawText = String(
       data.rawText || ""
@@ -225,8 +404,6 @@ async function performScan(file, onProgress) {
       );
     }
 
-    // Return data in existing App.jsx format.
-
     return {
       success: true,
 
@@ -254,7 +431,7 @@ async function performScan(file, onProgress) {
 
     if (error.message === "Failed to fetch") {
       throw new Error(
-        "Cannot connect to AI server. Run node server.mjs."
+        "Cannot connect to AI server. Please check your connection."
       );
     }
 
@@ -272,7 +449,6 @@ async function performScan(file, onProgress) {
 
 // ==================================================
 // SCAN QUEUE
-// Prevent simultaneous inquiry requests
 // ==================================================
 
 export function scanInquiryAI(file, onProgress) {

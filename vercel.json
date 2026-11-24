@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/scan-inquiry.js": {
+      "maxDuration": 60
+    }
+  }
+}
