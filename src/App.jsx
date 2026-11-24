@@ -17,8 +17,10 @@ import {
 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwg7Xtrnoe103VUmkqQfUIiIQjiccE_WpKoPxWV9OLTfuvIkgfJQktc2bgBWz7AwUbg/exec";
 
-const NAVY = "#0c2343";
-const GOLD = "#fbbf24";
+const BANSAL_LOGO = "data:image/png;base64,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";
+
+const NAVY = "#202124";
+const GOLD = "#dc2626";
 
 const initialLeads = [];
 
@@ -708,7 +710,7 @@ function App() {
       leads: leads.filter(l => new Date(l.id).toDateString() === date.toDateString()).length,
     };
   });
-  const sourceColors = [NAVY, GOLD, "#b8c9e8", "#e4e9f2"];
+  const sourceColors = [NAVY, GOLD, "#bcbcbc", "#e8e8e8"];
   const sources = [...new Set(leads.map(l => l.source || "Other"))].map((name, i) => ({
     name,
     value: leads.length ? Math.round(leads.filter(l => (l.source || "Other") === name).length / leads.length * 100) : 0,
@@ -723,9 +725,9 @@ function App() {
   ];
 
   const Scanner = () => (
-    <div className="relative flex h-[300px] min-w-0 overflow-hidden rounded-2xl bg-[#0c2343] text-white shadow-sm">
-      <div className="absolute -left-24 -top-24 h-52 w-52 rounded-full border-[38px] border-amber-400" />
-      <div className="absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-amber-400" />
+    <div className="relative flex h-[300px] min-w-0 overflow-hidden rounded-2xl bg-[#202124] text-white shadow-sm">
+      <div className="absolute -left-24 -top-24 h-52 w-52 rounded-full border-[38px] border-red-600" />
+      <div className="absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-red-600" />
 
       <div className="absolute bottom-0 left-0 top-0 w-[39%] overflow-hidden">
         <img
@@ -738,7 +740,7 @@ function App() {
       </div>
 
       <div className="relative z-10 ml-[29%] flex min-w-0 flex-1 flex-col justify-center px-4 py-4">
-        <div className="mb-2 text-[9px] font-extrabold tracking-[1.3px] text-amber-400">
+        <div className="mb-2 text-[9px] font-extrabold tracking-[1.3px] text-red-400">
           âœ¦ SMART LEAD CAPTURE
         </div>
         <h2 className="mb-2 text-[clamp(15px,1.5vw,23px)] font-extrabold leading-tight text-white">
@@ -763,7 +765,7 @@ function App() {
           </span>
           <button
             onClick={() => inputRef.current?.click()}
-            className="mt-1 flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2.5 text-[11px] font-bold text-[#10223f] hover:bg-amber-300"
+            className="mt-1 flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-[11px] font-bold text-[#ffffff] hover:bg-red-700"
           >
             <Upload size={14} /> Choose Image
           </button>
@@ -823,21 +825,21 @@ function App() {
           <AreaChart data={trend} margin={{ top: 10, right: 5, left: -28, bottom: 0 }}>
             <defs>
               <linearGradient id="goldArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#fbbf24" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#fbbf24" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="#dc2626" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#edf0f5" vertical={false} />
+            <CartesianGrid stroke="#eeeeee" vertical={false} />
             <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} domain={[0, 50]} />
             <Tooltip />
             <Area
               type="monotone"
               dataKey="leads"
-              stroke="#e8a900"
+              stroke="#dc2626"
               strokeWidth={3}
               fill="url(#goldArea)"
-              dot={{ r: 3, fill: "#e8a900" }}
+              dot={{ r: 3, fill: "#dc2626" }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -848,7 +850,7 @@ function App() {
   const LeadTable = ({ data }) => (
     <div className="w-full overflow-x-auto">
       <table className="w-full min-w-[920px] border-collapse text-left text-[11px]">
-        <thead className="bg-[#f0f3f8] text-slate-600">
+        <thead className="bg-[#f1f1f1] text-slate-600">
           <tr>
             {["#", "Name", "Company", "Mobile", "Email", "Designation", "Source", "Date & Time", "Sheet Status"].map(h => (
               <th key={h} className="px-3 py-3 font-bold">{h}</th>
@@ -885,7 +887,7 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] font-sans text-[#0d2040]">
+    <div className="min-h-screen bg-[#f5f5f5] font-sans text-[#242424]">
       <input
         ref={inputRef}
         type="file"
@@ -922,11 +924,10 @@ function App() {
       )}
 
       {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] flex-col overflow-hidden bg-[#0c2343] text-white transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] flex-col overflow-hidden bg-[#202124] text-white transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-[100px] shrink-0 items-center gap-3 px-6">
-          <div className="text-[51px] leading-none font-black italic text-amber-400">B</div>
-          <div className="text-[17px] leading-[1.2] font-extrabold">
-            Banssa Wire<br />Industries
+          <div className="flex h-[78px] min-w-0 flex-1 items-center justify-center rounded-xl bg-white px-3">
+            <img src={BANSAL_LOGO} alt="Bansal Wire Industries" className="h-full w-full object-contain" />
           </div>
           <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X size={20} />
@@ -947,7 +948,7 @@ function App() {
               }}
               className={`flex h-[49px] w-full items-center gap-4 rounded-xl px-5 text-left text-[13px] font-semibold transition-colors ${
                 page === name
-                  ? "bg-amber-400 text-[#0c2343]"
+                  ? "bg-red-600 text-white"
                   : "text-slate-200 hover:bg-white/10"
               }`}
             >
@@ -959,13 +960,13 @@ function App() {
 
         <div className="relative mt-auto overflow-hidden px-4 pb-20 pt-5">
           <div className="relative z-10 flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 p-4">
-            <Factory size={25} className="text-amber-400" />
+            <Factory size={25} className="text-red-400" />
             <div>
               <p className="text-[12px] font-bold">Exhibition Mode</p>
               <p className="mt-1 text-[11px] text-emerald-400">â— Active</p>
             </div>
           </div>
-          <div className="absolute -bottom-24 -left-12 h-36 w-80 rotate-[-14deg] rounded-[50%] bg-amber-400" />
+          <div className="absolute -bottom-24 -left-12 h-36 w-80 rotate-[-14deg] rounded-[50%] bg-red-600" />
         </div>
       </aside>
 
@@ -977,7 +978,7 @@ function App() {
             <button className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu size={23} />
             </button>
-            <LayoutDashboard size={27} className="hidden shrink-0 text-[#0c2343] sm:block" />
+            <LayoutDashboard size={27} className="hidden shrink-0 text-[#202124] sm:block" />
             <div className="min-w-0">
               <h1 className="text-[21px] font-extrabold tracking-tight">{page}</h1>
               <p className="hidden text-[12px] text-slate-500 sm:block">
@@ -1014,7 +1015,7 @@ function App() {
                   setNotificationsOpen(false);
                 }}
               >
-                <div className="grid h-11 w-11 place-items-center rounded-full bg-[#183c70] text-[15px] font-bold text-white">
+                <div className="grid h-11 w-11 place-items-center rounded-full bg-[#343434] text-[15px] font-bold text-white">
                   AS
                 </div>
                 <div className="hidden text-left sm:block">
@@ -1045,11 +1046,11 @@ function App() {
                   <div
                     key={title}
                     className={`flex min-h-[118px] items-center gap-3 rounded-2xl border border-slate-200 p-3 shadow-sm sm:p-4 ${
-                      gold ? "bg-amber-50/60" : "bg-white"
+                      gold ? "bg-red-50/60" : "bg-white"
                     }`}
                   >
                     <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-full ${
-                      gold ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-[#14325c]"
+                      gold ? "bg-red-100 text-red-700" : "bg-slate-100 text-[#333333]"
                     }`}>
                       <Icon size={25} />
                     </div>
@@ -1082,7 +1083,7 @@ function App() {
                   </div>
                   <button
                     onClick={() => navigate("Leads")}
-                    className="flex items-center gap-2 text-[12px] font-bold text-amber-600"
+                    className="flex items-center gap-2 text-[12px] font-bold text-red-700"
                   >
                     View All <ArrowRight size={16} />
                   </button>
@@ -1107,9 +1108,9 @@ function App() {
                       <h3 className="text-sm font-bold">Bulk Cards Queue</h3>
                       <p className="text-xs text-slate-500">Add images one by one or many at once, without saving first. PDF pages are added as card previews. Review, submit and move to the next card. Submitted previews disappear from the queue.</p>
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" disabled={saving || importing || bulkSaving} onClick={() => bulkInputRef.current?.click()} className="flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-3 text-xs font-bold disabled:opacity-50"><Layers size={16} /> Add Cards / Images</button>
+                        <button type="button" disabled={saving || importing || bulkSaving} onClick={() => bulkInputRef.current?.click()} className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-xs font-bold disabled:opacity-50 text-white"><Layers size={16} /> Add Cards / Images</button>
                         <button type="button" disabled={saving || importing || bulkSaving} onClick={() => pdfInputRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold disabled:opacity-50"><FileText size={16} /> Add PDF Cards</button>
-                        <button type="button" disabled={saving || scanning || importing || bulkSaving || !bulkQueue.length} onClick={saveAllBulkCards} className="flex items-center gap-2 rounded-lg bg-[#0c2343] px-4 py-3 text-xs font-bold text-white disabled:opacity-50"><Save size={16} /> {bulkSaving ? "Submitting Queue..." : "Submit All Unsaved"}</button>
+                        <button type="button" disabled={saving || scanning || importing || bulkSaving || !bulkQueue.length} onClick={saveAllBulkCards} className="flex items-center gap-2 rounded-lg bg-[#202124] px-4 py-3 text-xs font-bold text-white disabled:opacity-50"><Save size={16} /> {bulkSaving ? "Submitting Queue..." : "Submit All Unsaved"}</button>
                       </div>
                       {(importing || bulkSaving) && <p className="text-xs font-semibold text-amber-700">{importProgress || "Processing..."}</p>}
                       {!!bulkQueue.length && <>
@@ -1120,7 +1121,7 @@ function App() {
                         </div>
                         <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
                           {bulkQueue.map((file, i) => (
-                            <div key={`${queueVersion}-${i}`} className={`relative overflow-hidden rounded-lg border-2 ${i === bulkIndex ? "border-amber-400" : "border-slate-200"}`}>
+                            <div key={`${queueVersion}-${i}`} className={`relative overflow-hidden rounded-lg border-2 ${i === bulkIndex ? "border-red-600" : "border-slate-200"}`}>
                               <button type="button" disabled={scanning || saving || importing || bulkSaving} onClick={() => goToBulkCard(i)} className="w-full p-1 text-left disabled:opacity-50">
                                 <CardThumbnail file={file} index={i} />
                                 <span className="block truncate text-[10px] font-semibold">{i + 1}. {file.name}</span>
@@ -1153,7 +1154,7 @@ function App() {
                         <span>Scanning Visiting Card...</span><span>{scanProgress}%</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-amber-100">
-                        <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${scanProgress}%` }} />
+                        <div className="h-full rounded-full bg-red-600 transition-all" style={{ width: `${scanProgress}%` }} />
                       </div>
                     </div>
                   )}
@@ -1173,7 +1174,7 @@ function App() {
                           onChange={e => updateDraft({ ...form, [key]: e.target.value })}
                           type={key === "email" ? "email" : key === "mobile" ? "tel" : "text"}
                           placeholder={label}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-3 text-xs outline-none focus:border-amber-400"
+                          className="w-full rounded-lg border border-slate-200 px-3 py-3 text-xs outline-none focus:border-red-600"
                         />
                       </label>
                     ))}
@@ -1185,7 +1186,7 @@ function App() {
                       value={form.notes}
                       onChange={e => updateDraft({ ...form, notes: e.target.value })}
                       rows={3}
-                      className="w-full rounded-lg border border-slate-200 p-3 text-xs outline-none focus:border-amber-400"
+                      className="w-full rounded-lg border border-slate-200 p-3 text-xs outline-none focus:border-red-600"
                     />
                   </label>
 
@@ -1197,7 +1198,7 @@ function App() {
                     </details>
                   )}
 
-                  <button type="submit" disabled={scanning || saving || bulkSaving || importing || (page === "Bulk Cards" && (!bulkQueue.length || bulkStatuses[bulkIndex] === "submitted"))} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 py-3 text-sm font-bold hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50">
+                  <button type="submit" disabled={scanning || saving || bulkSaving || importing || (page === "Bulk Cards" && (!bulkQueue.length || bulkStatuses[bulkIndex] === "submitted"))} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 py-3 text-sm font-bold hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 text-white">
                     <Plus size={17} /> {scanning ? `Scanning... ${scanProgress}%` : saving ? "Submitting..." : page === "Bulk Cards" ? (bulkStatuses[bulkIndex] === "submitted" ? "Already Submitted" : "Submit Lead & Next Card") : "Save Lead"}
                   </button>
                 </form>
@@ -1217,10 +1218,10 @@ function App() {
                     <h3 className="text-sm font-bold">Inquiry Preview Queue</h3>
                     <p className="text-xs text-slate-500">Add files without saving first. Previous / Next preserves edits. Submitted previews disappear.</p>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={inquiryBusy} onClick={() => inquiryImageInputRef.current?.click()} className="rounded-lg bg-amber-400 px-4 py-3 text-xs font-bold disabled:opacity-50">Add Inquiry Images</button>
+                      <button type="button" disabled={inquiryBusy} onClick={() => inquiryImageInputRef.current?.click()} className="rounded-lg bg-red-600 px-4 py-3 text-xs font-bold disabled:opacity-50 text-white">Add Inquiry Images</button>
                       <button type="button" disabled={inquiryBusy} onClick={() => inquiryPdfInputRef.current?.click()} className="rounded-lg border px-4 py-3 text-xs font-bold disabled:opacity-50">Add Inquiry PDF</button>
-                      <button type="button" disabled={inquiryBusy || !inquiryQueue.length} onClick={submitAllInquiries} className="rounded-lg bg-[#0c2343] px-4 py-3 text-xs font-bold text-white disabled:opacity-50">Submit All Reviewed</button>
-                      <button type="button" disabled={inquiryBusy || !inquiryQueue.length} onClick={() => scanInquiryAt(inquiryIndex, true)} className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800 disabled:opacity-50">Rescan Current Inquiry</button>
+                      <button type="button" disabled={inquiryBusy || !inquiryQueue.length} onClick={submitAllInquiries} className="rounded-lg bg-[#202124] px-4 py-3 text-xs font-bold text-white disabled:opacity-50">Submit All Reviewed</button>
+                      <button type="button" disabled={inquiryBusy || !inquiryQueue.length} onClick={() => scanInquiryAt(inquiryIndex, true)} className="rounded-lg border border-red-600 bg-red-50 px-4 py-3 text-xs font-bold text-red-800 disabled:opacity-50">Rescan Current Inquiry</button>
                     </div>
                     <input ref={inquiryImageInputRef} className="hidden" type="file" accept="image/*" multiple onChange={e => { addInquiryFiles(e.target.files); e.target.value = ""; }} />
                     <input ref={inquiryPdfInputRef} className="hidden" type="file" accept="application/pdf,.pdf" multiple onChange={e => { addInquiryFiles(e.target.files, true); e.target.value = ""; }} />
@@ -1232,7 +1233,7 @@ function App() {
                         <button type="button" className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40" disabled={inquiryBusy || inquiryIndex >= inquiryQueue.length - 1} onClick={() => scanInquiryAt(inquiryIndex + 1)}>Next</button>
                       </div>
                       <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
-                        {inquiryQueue.map((file, i) => <div key={file.name + i} className={`relative rounded-lg border-2 p-1 ${i === inquiryIndex ? "border-amber-400" : "border-slate-200"}`}>
+                        {inquiryQueue.map((file, i) => <div key={file.name + i} className={`relative rounded-lg border-2 p-1 ${i === inquiryIndex ? "border-red-600" : "border-slate-200"}`}>
                           <button type="button" disabled={inquiryBusy} onClick={() => scanInquiryAt(i)} className="w-full text-left"><CardThumbnail file={file} index={i} /><span className="block truncate text-[10px]">{i + 1}. {file.name}</span></button>
                           <button type="button" disabled={inquiryBusy} onClick={() => removeInquiryAt(i)} title="Remove" className="absolute right-1 top-1 rounded bg-white p-1 text-red-600"><Trash2 size={13}/></button>
                         </div>)}
@@ -1252,10 +1253,10 @@ function App() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {INQUIRY_FIELDS.map(([key, label]) => <label key={key} className={key === "notes" ? "sm:col-span-2" : ""}>
                       <span className="mb-2 block text-xs font-semibold">{label}</span>
-                      {key === "notes" ? <textarea rows={3} value={inquiryForm[key] || ""} onChange={e => updateInquiryField(key, e.target.value)} className="w-full rounded-lg border border-slate-200 p-3 text-xs focus:border-amber-400" /> : <input value={inquiryForm[key] || ""} onChange={e => updateInquiryField(key, e.target.value)} type={key === "email" ? "email" : "text"} placeholder={label} className="w-full rounded-lg border border-slate-200 px-3 py-3 text-xs outline-none focus:border-amber-400" />}
+                      {key === "notes" ? <textarea rows={3} value={inquiryForm[key] || ""} onChange={e => updateInquiryField(key, e.target.value)} className="w-full rounded-lg border border-slate-200 p-3 text-xs focus:border-red-600" /> : <input value={inquiryForm[key] || ""} onChange={e => updateInquiryField(key, e.target.value)} type={key === "email" ? "email" : "text"} placeholder={label} className="w-full rounded-lg border border-slate-200 px-3 py-3 text-xs outline-none focus:border-red-600" />}
                     </label>)}
                   </div>
-                  <button type="submit" disabled={inquiryBusy || !inquiryQueue.length} className="mt-5 flex w-full justify-center rounded-lg bg-amber-400 py-3 text-sm font-bold disabled:opacity-50">{inquiryBusy ? "Processing..." : "Submit Inquiry & Next"}</button>
+                  <button type="submit" disabled={inquiryBusy || !inquiryQueue.length} className="mt-5 flex w-full justify-center rounded-lg bg-red-600 py-3 text-sm font-bold disabled:opacity-50 text-white">{inquiryBusy ? "Processing..." : "Submit Inquiry & Next"}</button>
                 </form>
               </div>
             </>
@@ -1276,7 +1277,7 @@ function App() {
                       className="w-36 py-2.5 text-xs outline-none sm:w-52"
                     />
                   </div>
-                  <button onClick={() => navigate("Scan Card")} className="flex items-center gap-1 rounded-lg bg-amber-400 px-4 py-2 text-xs font-bold">
+                  <button onClick={() => navigate("Scan Card")} className="flex items-center gap-1 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white">
                     <Plus size={16} /> Add Lead
                   </button>
                 </div>
